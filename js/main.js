@@ -1,41 +1,26 @@
 /**
  * Main module - Game initialization and orchestration
- * Coordinates all game systems and manages game state
+ * Continuous gameplay: wheel always spins, auto-advances after 2 perfect loops
  */
 
 const Game = (function() {
-    // Game states
-    const STATE = {
-        IDLE: 'idle',
-        COUNTDOWN: 'countdown',
-        PLAYING: 'playing',
-        SUCCESS: 'success',
-        FAILURE: 'failure'
-    };
-
-    let state = STATE.IDLE;
     let currentPuzzleIndex = 0;
     let currentPuzzle = null;
 
     // Timing tracking
     let measureStartTime = 0;
-    let currentLoop = 0;
     let expectedHits = []; // Hits expected this measure
-    let hitsThisMeasure = []; // Track which symbols were hit this measure
-
-    // Statistics
-    let perfectHits = 0;
-    let goodHits = 0;
-    let okHits = 0;
-    let misses = 0;
+    let previousMeasureHits = []; // Store previous measure for completion check
+    let consecutiveSuccessfulLoops = 0; // Track perfect loops in a row
+    let isFirstMeasure = true; // Skip checking the very first measure
 
     // DOM elements
-    let startBtn, retryBtn, nextBtn;
     let puzzleNameEl, puzzleTempoEl, statusMessageEl;
-    let countdownOverlay, countdownNumber;
 
     // Animation frame for visual sync
     let animationFrameId = null;
+
+    let started = false;
 
     function init() {
         // Initialize all modules
@@ -46,19 +31,9 @@ const Game = (function() {
         Feedback.init();
 
         // Get DOM elements
-        startBtn = document.getElementById('start-btn');
-        retryBtn = document.getElementById('retry-btn');
-        nextBtn = document.getElementById('next-btn');
         puzzleNameEl = document.getElementById('puzzle-name');
         puzzleTempoEl = document.getElementById('puzzle-tempo');
         statusMessageEl = document.getElementById('status-message');
-        countdownOverlay = document.getElementById('countdown-overlay');
-        countdownNumber = document.getElementById('countdown-number');
-
-        // Set up event listeners
-        startBtn.addEventListener('click', handleStart);
-        retryBtn.addEventListener('click', handleRetry);
-        nextBtn.addEventListener('click', handleNext);
 
         // Set up timing callbacks
         Timing.setOnSubdivision(handleSubdivision);
@@ -67,10 +42,21 @@ const Game = (function() {
         // Set up input callback
         Input.setOnKeyPress(handleKeyPress);
 
-        // Load first puzzle (but don't start)
+        // Load first puzzle (visual only)
         loadPuzzle(0);
 
-        console.log('Rhythm Wheel initialized');
+        // Wait for user interaction to start (browser audio policy)
+        statusMessageEl.textContent = 'Click anywhere to start';
+        document.addEventListener('click', startOnClick, { once: true });
+        document.addEventListener('keydown', startOnClick, { once: true });
+
+        console.log('Rhythm Wheel initialized - continuous mode');
+    }
+
+    function startOnClick() {
+        if (started) return;
+        started = true;
+        startPlaying();
     }
 
     function loadPuzzle(index) {
@@ -78,12 +64,13 @@ const Game = (function() {
         currentPuzzle = Puzzles.getByIndex(index);
 
         if (!currentPuzzle) {
-            // No more puzzles - show completion
+            // No more puzzles - loop back to first
+            currentPuzzleIndex = 0;
+            currentPuzzle = Puzzles.getByIndex(0);
             showCompletion();
-            return;
         }
 
-        // Configure timing
+        // Configure timing (don't stop, just update)
         Timing.setTempo(currentPuzzle.tempo);
         Timing.setSubdivisions(currentPuzzle.subdivisions);
 
@@ -96,88 +83,32 @@ const Game = (function() {
         puzzleTempoEl.textContent = `${currentPuzzle.tempo} BPM`;
         statusMessageEl.textContent = currentPuzzle.description;
 
-        // Reset state
-        resetStats();
-    }
-
-    function resetStats() {
-        perfectHits = 0;
-        goodHits = 0;
-        okHits = 0;
-        misses = 0;
-        currentLoop = 0;
-        hitsThisMeasure = [];
+        // Reset tracking for new puzzle
+        consecutiveSuccessfulLoops = 0;
         expectedHits = [];
-    }
-
-    function handleStart() {
-        if (state !== STATE.IDLE && state !== STATE.SUCCESS && state !== STATE.FAILURE) {
-            return;
-        }
-
-        // Disable start button during play
-        startBtn.disabled = true;
-        retryBtn.disabled = true;
-        nextBtn.disabled = true;
-
-        // Start countdown
-        startCountdown();
-    }
-
-    function startCountdown() {
-        state = STATE.COUNTDOWN;
-        countdownOverlay.classList.remove('hidden');
-
-        let count = 3;
-        countdownNumber.textContent = count;
-
-        const countInterval = setInterval(() => {
-            count--;
-            if (count > 0) {
-                countdownNumber.textContent = count;
-                Synth.playClick();
-            } else {
-                clearInterval(countInterval);
-                countdownOverlay.classList.add('hidden');
-                startPlaying();
-            }
-        }, 60000 / currentPuzzle.tempo); // Use tempo for countdown timing
+        previousMeasureHits = [];
+        isFirstMeasure = true;
     }
 
     function startPlaying() {
-        state = STATE.PLAYING;
-        currentLoop = 0;
-        hitsThisMeasure = [];
-
-        // Clear any previous states
-        Wheel.clearSymbolStates();
-        Feedback.clear();
-
         // Enable input
         Input.enable();
 
         // Start the timing scheduler
-        Timing.start(0.1); // Small delay to let things settle
+        if (!Timing.isRunning()) {
+            Timing.start(0.1);
+        }
 
         // Start visual update loop
         startVisualLoop();
-
-        statusMessageEl.textContent = 'Play!';
     }
 
     function startVisualLoop() {
         function update() {
-            // Visual updates synced to animation frame
-            // Could add playhead indicator here
             animationFrameId = requestAnimationFrame(update);
         }
-        animationFrameId = requestAnimationFrame(update);
-    }
-
-    function stopVisualLoop() {
-        if (animationFrameId) {
-            cancelAnimationFrame(animationFrameId);
-            animationFrameId = null;
+        if (!animationFrameId) {
+            animationFrameId = requestAnimationFrame(update);
         }
     }
 
@@ -188,12 +119,19 @@ const Game = (function() {
             Wheel.highlightPosition(subdivision);
         }, Math.max(0, delay));
 
-        // Track measure start time
+        // At subdivision 0 (beat 1), check previous measure and start new one
         if (subdivision === 0) {
-            measureStartTime = time;
-            hitsThisMeasure = [];
+            // Check previous measure completion (skip the very first measure)
+            if (!isFirstMeasure && expectedHits.length > 0) {
+                // Store current hits before resetting
+                previousMeasureHits = [...expectedHits];
+                checkMeasureCompletion();
+            }
+            isFirstMeasure = false;
 
-            // Build expected hits for this measure
+            measureStartTime = time;
+
+            // Build expected hits for this new measure
             expectedHits = currentPuzzle.symbols.map(s => ({
                 ...s,
                 expectedTime: time + (s.position * Timing.getSubdivisionDuration()),
@@ -208,65 +146,84 @@ const Game = (function() {
         setTimeout(() => {
             Wheel.pulseCenterLight();
         }, Math.max(0, delay));
-
-        // Check if we completed a loop (except first beat of first loop)
-        if (currentLoop > 0 || time > measureStartTime + 0.1) {
-            checkMeasureCompletion();
-        }
-
-        currentLoop++;
-
-        // Check if puzzle is complete
-        if (currentLoop > currentPuzzle.loops) {
-            endPuzzle(true);
-        }
     }
 
     function checkMeasureCompletion() {
-        // Check for missed notes (symbols that weren't hit)
-        expectedHits.forEach(expected => {
-            if (!expected.hit) {
-                misses++;
-                // Don't show miss feedback here - player might have played wrong key
+        // Check if all symbols were hit correctly (use previousMeasureHits)
+        const allHit = previousMeasureHits.every(e => e.hit);
+        const anyMissed = previousMeasureHits.some(e => !e.hit);
+
+        if (allHit && previousMeasureHits.length > 0) {
+            consecutiveSuccessfulLoops++;
+
+            // Show progress with visual indicator
+            if (consecutiveSuccessfulLoops === 1) {
+                statusMessageEl.textContent = `${currentPuzzle.description} - 1/2`;
+                showLoopSuccess();
             }
-        });
+
+            // Advance after 2 consecutive successful loops
+            if (consecutiveSuccessfulLoops >= 2) {
+                advanceToNextPuzzle();
+            }
+        } else if (anyMissed) {
+            // Reset streak on miss
+            consecutiveSuccessfulLoops = 0;
+            statusMessageEl.textContent = currentPuzzle.description;
+        }
+
+        // Clear symbol completed states for next loop
+        Wheel.clearSymbolStates();
+    }
+
+    function showLoopSuccess() {
+        // Flash the wheel with a success indicator
+        const wheel = document.getElementById('wheel');
+        wheel.classList.add('loop-success');
+        setTimeout(() => {
+            wheel.classList.remove('loop-success');
+        }, 400);
+    }
+
+    function advanceToNextPuzzle() {
+        // Show brief success feedback
+        statusMessageEl.textContent = 'Nice!';
+
+        // Small delay before advancing to show success
+        setTimeout(() => {
+            loadPuzzle(currentPuzzleIndex + 1);
+        }, 300);
     }
 
     function handleKeyPress(event) {
-        if (state !== STATE.PLAYING) return;
-
         const { key, timestamp } = event;
-        const instrument = Input.getKeyInstrument(key);
 
         // Always play the sound immediately
         Synth.playByKey(key);
 
-        // Find the closest expected hit for this key
-        const matchingExpected = expectedHits
+        // Find the closest expected hit for this key (keep reference to original)
+        const candidates = expectedHits
             .filter(e => e.key === key && !e.hit)
             .map(e => ({
-                ...e,
+                original: e, // Keep reference to original object
                 timingError: (timestamp - e.expectedTime) * 1000 // Convert to ms
             }))
-            .sort((a, b) => Math.abs(a.timingError) - Math.abs(b.timingError))[0];
+            .sort((a, b) => Math.abs(a.timingError) - Math.abs(b.timingError));
 
-        if (matchingExpected) {
+        const match = candidates[0];
+
+        if (match) {
             const tolerance = currentPuzzle.tolerance;
-            const timingError = matchingExpected.timingError;
+            const timingError = match.timingError;
 
             if (Math.abs(timingError) <= tolerance) {
-                // Hit!
-                matchingExpected.hit = true;
-                const result = Feedback.evaluateHit(timingError, tolerance);
-
-                // Update stats
-                if (result === 'perfect') perfectHits++;
-                else if (result === 'good') goodHits++;
-                else if (result === 'ok') okHits++;
+                // Hit! Mark the ORIGINAL object
+                match.original.hit = true;
+                Feedback.evaluateHit(timingError, tolerance);
 
                 // Visual feedback on symbol
-                Wheel.highlightSymbol(matchingExpected.position, true);
-                Wheel.markSymbolComplete(matchingExpected.position);
+                Wheel.highlightSymbol(match.original.position, true);
+                Wheel.markSymbolComplete(match.original.position);
             } else {
                 // Too early or too late
                 if (timingError < -tolerance) {
@@ -274,87 +231,22 @@ const Game = (function() {
                 } else {
                     Feedback.showLate();
                 }
-                misses++;
+                // Reset streak on bad timing
+                consecutiveSuccessfulLoops = 0;
+                statusMessageEl.textContent = currentPuzzle.description;
             }
         } else {
             // Wrong key or already hit this position
             Feedback.showWrongKey();
-            misses++;
+            // Reset streak on wrong key
+            consecutiveSuccessfulLoops = 0;
+            statusMessageEl.textContent = currentPuzzle.description;
         }
-    }
-
-    function endPuzzle(completed) {
-        state = completed ? STATE.SUCCESS : STATE.FAILURE;
-
-        // Stop timing and input
-        Timing.stop();
-        Input.disable();
-        stopVisualLoop();
-
-        // Calculate final misses from last measure
-        if (completed) {
-            checkMeasureCompletion();
-        }
-
-        // Determine success
-        const totalNotes = currentPuzzle.symbols.length * currentPuzzle.loops;
-        const totalHits = perfectHits + goodHits + okHits;
-        const successRate = totalHits / totalNotes;
-
-        // Need at least 70% to pass
-        const passed = successRate >= 0.7;
-
-        // Update UI
-        if (passed) {
-            statusMessageEl.textContent = `Success! ${Math.round(successRate * 100)}% accuracy`;
-            nextBtn.disabled = false;
-        } else {
-            statusMessageEl.textContent = `Try again! ${Math.round(successRate * 100)}% accuracy`;
-        }
-
-        startBtn.disabled = false;
-        retryBtn.disabled = false;
-
-        // Update button text
-        startBtn.textContent = 'Restart';
-    }
-
-    function handleRetry() {
-        // Reset and reload current puzzle
-        Timing.reset();
-        loadPuzzle(currentPuzzleIndex);
-        state = STATE.IDLE;
-        startBtn.textContent = 'Start';
-        startBtn.disabled = false;
-        retryBtn.disabled = true;
-        nextBtn.disabled = true;
-    }
-
-    function handleNext() {
-        // Load next puzzle
-        Timing.reset();
-        loadPuzzle(currentPuzzleIndex + 1);
-        state = STATE.IDLE;
-        startBtn.textContent = 'Start';
-        startBtn.disabled = false;
-        retryBtn.disabled = true;
-        nextBtn.disabled = true;
     }
 
     function showCompletion() {
-        puzzleNameEl.textContent = 'Congratulations!';
-        puzzleTempoEl.textContent = '';
-        statusMessageEl.textContent = 'You completed all puzzles!';
-        startBtn.disabled = true;
-        retryBtn.disabled = false;
-        nextBtn.disabled = true;
-
-        // Reset to first puzzle on retry
-        retryBtn.onclick = () => {
-            currentPuzzleIndex = -1;
-            handleNext();
-            retryBtn.onclick = handleRetry;
-        };
+        puzzleNameEl.textContent = 'All Puzzles Complete!';
+        statusMessageEl.textContent = 'Starting over...';
     }
 
     // Initialize when DOM is ready
@@ -366,7 +258,6 @@ const Game = (function() {
 
     return {
         init,
-        getState: () => state,
         getCurrentPuzzle: () => currentPuzzle
     };
 })();

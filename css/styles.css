@@ -66,6 +66,11 @@ body {
 /* SVG Wheel styles */
 #wheel {
     filter: drop-shadow(0 0 20px rgba(52, 152, 219, 0.3));
+    transition: filter 0.2s ease;
+}
+
+#wheel.loop-success {
+    filter: drop-shadow(0 0 40px rgba(46, 204, 113, 0.8));
 }
 
 .wheel-ring {
@@ -203,60 +208,13 @@ body {
     color: #fff;
 }
 
-/* Footer and controls */
+/* Footer */
 .game-footer {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 15px;
     width: 100%;
-}
-
-.controls {
-    display: flex;
-    gap: 10px;
-}
-
-.btn {
-    padding: 12px 24px;
-    font-size: 16px;
-    font-weight: bold;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.btn-primary {
-    background: #3498db;
-    color: #fff;
-}
-
-.btn-primary:hover:not(:disabled) {
-    background: #2980b9;
-}
-
-.btn-secondary {
-    background: #7f8c8d;
-    color: #fff;
-}
-
-.btn-secondary:hover:not(:disabled) {
-    background: #636e72;
-}
-
-.btn-success {
-    background: #2ecc71;
-    color: #fff;
-}
-
-.btn-success:hover:not(:disabled) {
-    background: #27ae60;
 }
 
 .status {
@@ -267,46 +225,6 @@ body {
 
 #status-message {
     font-style: italic;
-}
-
-/* Countdown overlay */
-.countdown-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.8);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 100;
-}
-
-.countdown-overlay.hidden {
-    display: none;
-}
-
-#countdown-number {
-    font-size: 120px;
-    font-weight: bold;
-    color: #fff;
-    animation: countdown-pulse 0.5s ease-out;
-}
-
-@keyframes countdown-pulse {
-    0% {
-        transform: scale(1.5);
-        opacity: 0;
-    }
-    50% {
-        transform: scale(1);
-        opacity: 1;
-    }
-    100% {
-        transform: scale(0.8);
-        opacity: 0.8;
-    }
 }
 
 /* Feedback container */
@@ -359,45 +277,6 @@ body {
     }
 }
 
-/* Result overlay */
-.result-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.85);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    z-index: 100;
-}
-
-.result-overlay.hidden {
-    display: none;
-}
-
-.result-title {
-    font-size: 48px;
-    font-weight: bold;
-    margin-bottom: 20px;
-}
-
-.result-title.success {
-    color: #2ecc71;
-}
-
-.result-title.failure {
-    color: #e74c3c;
-}
-
-.result-stats {
-    font-size: 18px;
-    color: #aaa;
-    margin-bottom: 30px;
-}
-
 /* Animations */
 @keyframes glow {
     0%, 100% {
@@ -425,10 +304,5 @@ body {
 
     .key-item {
         font-size: 12px;
-    }
-
-    .btn {
-        padding: 10px 16px;
-        font-size: 14px;
     }
 }
