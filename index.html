@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rhythm Wheel Puzzle</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <header class="game-header">
+            <h1>Rhythm Wheel</h1>
+            <div class="puzzle-info">
+                <span id="puzzle-name">Ready to Start</span>
+                <span id="puzzle-tempo"></span>
+            </div>
+        </header>
+
+        <main class="game-main">
+            <div class="wheel-container">
+                <svg id="wheel" viewBox="0 0 400 400" width="400" height="400">
+                    <!-- Wheel will be rendered here by wheel.js -->
+                </svg>
+            </div>
+
+            <div class="key-legend">
+                <div class="key-item key-q"><span class="key">Q</span> Kick</div>
+                <div class="key-item key-w"><span class="key">W</span> Snare</div>
+                <div class="key-item key-e"><span class="key">E</span> Hi-hat</div>
+                <div class="key-item key-r"><span class="key">R</span> Other</div>
+            </div>
+        </main>
+
+        <footer class="game-footer">
+            <div class="controls">
+                <button id="start-btn" class="btn btn-primary">Start</button>
+                <button id="retry-btn" class="btn btn-secondary" disabled>Retry</button>
+                <button id="next-btn" class="btn btn-success" disabled>Next Puzzle</button>
+            </div>
+            <div class="status">
+                <span id="status-message">Press Start to begin</span>
+            </div>
+        </footer>
+    </div>
+
+    <div id="countdown-overlay" class="countdown-overlay hidden">
+        <span id="countdown-number"></span>
+    </div>
+
+    <div id="feedback-container" class="feedback-container"></div>
+
+    <script src="js/timing.js"></script>
+    <script src="js/synth.js"></script>
+    <script src="js/wheel.js"></script>
+    <script src="js/input.js"></script>
+    <script src="js/puzzles.js"></script>
+    <script src="js/feedback.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
