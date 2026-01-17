@@ -179,10 +179,10 @@ const Wheel = (function() {
         // Add key label
         const label = document.createElementNS(SVG_NS, 'text');
         label.setAttribute('x', 0);
-        label.setAttribute('y', 4);
+        label.setAttribute('y', 0);
+        label.setAttribute('dy', '0.35em');
         label.setAttribute('class', 'symbol-label');
         label.setAttribute('text-anchor', 'middle');
-        label.setAttribute('dominant-baseline', 'central');
         label.textContent = symbol.key.toUpperCase();
 
         group.appendChild(shape);

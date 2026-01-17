@@ -77,64 +77,48 @@ const Synth = (function() {
         if (!audioContext) return;
 
         // Hi-hat is filtered noise
-        const noiseBuffer = createNoiseBuffer(0.1);
+        const noiseBuffer = createNoiseBuffer(0.15);
         const noise = audioContext.createBufferSource();
         noise.buffer = noiseBuffer;
 
-        // Bandpass filter for metallic sound
-        const bandpass = audioContext.createBiquadFilter();
-        bandpass.type = 'bandpass';
-        bandpass.frequency.value = 10000;
-        bandpass.Q.value = 1;
-
-        // Highpass for extra brightness
+        // Highpass filter for bright metallic sound
         const highpass = audioContext.createBiquadFilter();
         highpass.type = 'highpass';
-        highpass.frequency.value = 7000;
+        highpass.frequency.value = 5000;
 
         const gain = audioContext.createGain();
-        gain.gain.setValueAtTime(0.3, time);
-        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.08);
+        gain.gain.setValueAtTime(0.6, time);
+        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
 
-        noise.connect(bandpass);
-        bandpass.connect(highpass);
+        noise.connect(highpass);
         highpass.connect(gain);
         gain.connect(audioContext.destination);
 
         noise.start(time);
-        noise.stop(time + 0.1);
+        noise.stop(time + 0.15);
     }
 
     function playOther(time) {
         if (!audioContext) return;
 
-        // "Other" - a synthetic cowbell-like sound
-        const osc1 = audioContext.createOscillator();
-        const osc2 = audioContext.createOscillator();
+        const now = time || audioContext.currentTime;
+
+        // "Other" - a simple bell/ping sound
+        const osc = audioContext.createOscillator();
         const gain = audioContext.createGain();
 
-        osc1.type = 'square';
-        osc2.type = 'square';
-        osc1.frequency.value = 800;
-        osc2.frequency.value = 540;
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(660, now); // E5
+        osc.frequency.exponentialRampToValueAtTime(440, now + 0.1); // Drop to A4
 
-        const bandpass = audioContext.createBiquadFilter();
-        bandpass.type = 'bandpass';
-        bandpass.frequency.value = 800;
-        bandpass.Q.value = 3;
-
-        osc1.connect(bandpass);
-        osc2.connect(bandpass);
-        bandpass.connect(gain);
+        osc.connect(gain);
         gain.connect(audioContext.destination);
 
-        gain.gain.setValueAtTime(0.4, time);
-        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.15);
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
 
-        osc1.start(time);
-        osc2.start(time);
-        osc1.stop(time + 0.15);
-        osc2.stop(time + 0.15);
+        osc.start(now);
+        osc.stop(now + 0.25);
     }
 
     function createNoiseBuffer(duration) {
