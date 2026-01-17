@@ -1,6 +1,6 @@
 /**
  * Puzzles module - Puzzle definitions
- * Contains all puzzle data for the game
+ * Each puzzle builds on the previous - keeping old patterns and adding new elements
  */
 
 const Puzzles = (function() {
@@ -12,49 +12,41 @@ const Puzzles = (function() {
     // Odd positions (1, 3, 5, 7): eighth notes between beats
 
     const puzzles = [
+        // 1: Just kick on beat 1
         {
             id: 1,
-            name: "First Beat",
-            description: "Press Q on beat 1",
-            tempo: 80,
+            name: "The Downbeat",
+            description: "Q on beat 1",
+            tempo: 70,
             subdivisions: 8,
             symbols: [
                 { position: 0, key: 'q', instrument: 'kick' }
             ],
-            tolerance: 200, // ms hit window (generous for beginners)
-            loops: 2 // How many loops to complete
+            tolerance: 220,
+            loops: 2
         },
+
+        // 2: Add kick on beat 3
         {
             id: 2,
             name: "One and Three",
-            description: "Press Q on beats 1 and 3",
-            tempo: 80,
+            description: "Add Q on beat 3",
+            tempo: 75,
             subdivisions: 8,
             symbols: [
                 { position: 0, key: 'q', instrument: 'kick' },
                 { position: 4, key: 'q', instrument: 'kick' }
             ],
-            tolerance: 180,
+            tolerance: 200,
             loops: 2
         },
+
+        // 3: Add snare on beats 2 and 4
         {
             id: 3,
-            name: "Backbeat",
-            description: "Press W on beats 2 and 4",
-            tempo: 85,
-            subdivisions: 8,
-            symbols: [
-                { position: 2, key: 'w', instrument: 'snare' },
-                { position: 6, key: 'w', instrument: 'snare' }
-            ],
-            tolerance: 180,
-            loops: 2
-        },
-        {
-            id: 4,
-            name: "Rock Beat",
-            description: "Kick on 1 and 3, snare on 2 and 4",
-            tempo: 90,
+            name: "Add Backbeat",
+            description: "Add W on beats 2 and 4",
+            tempo: 80,
             subdivisions: 8,
             symbols: [
                 { position: 0, key: 'q', instrument: 'kick' },
@@ -62,28 +54,34 @@ const Puzzles = (function() {
                 { position: 4, key: 'q', instrument: 'kick' },
                 { position: 6, key: 'w', instrument: 'snare' }
             ],
-            tolerance: 150,
+            tolerance: 180,
             loops: 2
         },
+
+        // 4: Add hi-hat on beats 1 and 3
         {
-            id: 5,
-            name: "Hi-Hat Time",
-            description: "Hi-hats on every beat",
-            tempo: 85,
+            id: 4,
+            name: "Add Hi-Hat",
+            description: "Add E on beats 1 and 3",
+            tempo: 80,
             subdivisions: 8,
             symbols: [
+                { position: 0, key: 'q', instrument: 'kick' },
                 { position: 0, key: 'e', instrument: 'hihat' },
-                { position: 2, key: 'e', instrument: 'hihat' },
+                { position: 2, key: 'w', instrument: 'snare' },
+                { position: 4, key: 'q', instrument: 'kick' },
                 { position: 4, key: 'e', instrument: 'hihat' },
-                { position: 6, key: 'e', instrument: 'hihat' }
+                { position: 6, key: 'w', instrument: 'snare' }
             ],
-            tolerance: 150,
+            tolerance: 180,
             loops: 2
         },
+
+        // 5: Add hi-hat on beats 2 and 4 too (hi-hat on all beats)
         {
-            id: 6,
-            name: "Full Kit",
-            description: "Kick, snare, and hi-hat together",
+            id: 5,
+            name: "Full Hi-Hat",
+            description: "Add E on beats 2 and 4",
             tempo: 85,
             subdivisions: 8,
             symbols: [
@@ -96,26 +94,138 @@ const Puzzles = (function() {
                 { position: 6, key: 'w', instrument: 'snare' },
                 { position: 6, key: 'e', instrument: 'hihat' }
             ],
+            tolerance: 160,
+            loops: 2
+        },
+
+        // 6: Add bell on beat 1
+        {
+            id: 6,
+            name: "Add Bell",
+            description: "Add R on beat 1",
+            tempo: 85,
+            subdivisions: 8,
+            symbols: [
+                { position: 0, key: 'q', instrument: 'kick' },
+                { position: 0, key: 'e', instrument: 'hihat' },
+                { position: 0, key: 'r', instrument: 'other' },
+                { position: 2, key: 'w', instrument: 'snare' },
+                { position: 2, key: 'e', instrument: 'hihat' },
+                { position: 4, key: 'q', instrument: 'kick' },
+                { position: 4, key: 'e', instrument: 'hihat' },
+                { position: 6, key: 'w', instrument: 'snare' },
+                { position: 6, key: 'e', instrument: 'hihat' }
+            ],
             tolerance: 150,
             loops: 2
         },
+
+        // 7: Add eighth note hi-hats (between beats)
         {
             id: 7,
             name: "Eighth Notes",
-            description: "Hi-hats on every eighth note",
-            tempo: 75,
+            description: "Add E between beats",
+            tempo: 80,
             subdivisions: 8,
             symbols: [
+                { position: 0, key: 'q', instrument: 'kick' },
                 { position: 0, key: 'e', instrument: 'hihat' },
+                { position: 0, key: 'r', instrument: 'other' },
                 { position: 1, key: 'e', instrument: 'hihat' },
+                { position: 2, key: 'w', instrument: 'snare' },
                 { position: 2, key: 'e', instrument: 'hihat' },
                 { position: 3, key: 'e', instrument: 'hihat' },
+                { position: 4, key: 'q', instrument: 'kick' },
                 { position: 4, key: 'e', instrument: 'hihat' },
                 { position: 5, key: 'e', instrument: 'hihat' },
+                { position: 6, key: 'w', instrument: 'snare' },
+                { position: 6, key: 'e', instrument: 'hihat' },
+                { position: 7, key: 'e', instrument: 'hihat' }
+            ],
+            tolerance: 140,
+            loops: 2
+        },
+
+        // 8: Add syncopated kick on "and" of 2
+        {
+            id: 8,
+            name: "Syncopation",
+            description: "Add Q on the 'and' of 2",
+            tempo: 80,
+            subdivisions: 8,
+            symbols: [
+                { position: 0, key: 'q', instrument: 'kick' },
+                { position: 0, key: 'e', instrument: 'hihat' },
+                { position: 0, key: 'r', instrument: 'other' },
+                { position: 1, key: 'e', instrument: 'hihat' },
+                { position: 2, key: 'w', instrument: 'snare' },
+                { position: 2, key: 'e', instrument: 'hihat' },
+                { position: 3, key: 'q', instrument: 'kick' },
+                { position: 3, key: 'e', instrument: 'hihat' },
+                { position: 4, key: 'q', instrument: 'kick' },
+                { position: 4, key: 'e', instrument: 'hihat' },
+                { position: 5, key: 'e', instrument: 'hihat' },
+                { position: 6, key: 'w', instrument: 'snare' },
+                { position: 6, key: 'e', instrument: 'hihat' },
+                { position: 7, key: 'e', instrument: 'hihat' }
+            ],
+            tolerance: 130,
+            loops: 2
+        },
+
+        // 9: Add bell on beat 3 too
+        {
+            id: 9,
+            name: "Double Bell",
+            description: "Add R on beat 3",
+            tempo: 85,
+            subdivisions: 8,
+            symbols: [
+                { position: 0, key: 'q', instrument: 'kick' },
+                { position: 0, key: 'e', instrument: 'hihat' },
+                { position: 0, key: 'r', instrument: 'other' },
+                { position: 1, key: 'e', instrument: 'hihat' },
+                { position: 2, key: 'w', instrument: 'snare' },
+                { position: 2, key: 'e', instrument: 'hihat' },
+                { position: 3, key: 'q', instrument: 'kick' },
+                { position: 3, key: 'e', instrument: 'hihat' },
+                { position: 4, key: 'q', instrument: 'kick' },
+                { position: 4, key: 'e', instrument: 'hihat' },
+                { position: 4, key: 'r', instrument: 'other' },
+                { position: 5, key: 'e', instrument: 'hihat' },
+                { position: 6, key: 'w', instrument: 'snare' },
                 { position: 6, key: 'e', instrument: 'hihat' },
                 { position: 7, key: 'e', instrument: 'hihat' }
             ],
             tolerance: 120,
+            loops: 2
+        },
+
+        // 10: Faster tempo - master level
+        {
+            id: 10,
+            name: "Full Speed",
+            description: "Same pattern, faster!",
+            tempo: 95,
+            subdivisions: 8,
+            symbols: [
+                { position: 0, key: 'q', instrument: 'kick' },
+                { position: 0, key: 'e', instrument: 'hihat' },
+                { position: 0, key: 'r', instrument: 'other' },
+                { position: 1, key: 'e', instrument: 'hihat' },
+                { position: 2, key: 'w', instrument: 'snare' },
+                { position: 2, key: 'e', instrument: 'hihat' },
+                { position: 3, key: 'q', instrument: 'kick' },
+                { position: 3, key: 'e', instrument: 'hihat' },
+                { position: 4, key: 'q', instrument: 'kick' },
+                { position: 4, key: 'e', instrument: 'hihat' },
+                { position: 4, key: 'r', instrument: 'other' },
+                { position: 5, key: 'e', instrument: 'hihat' },
+                { position: 6, key: 'w', instrument: 'snare' },
+                { position: 6, key: 'e', instrument: 'hihat' },
+                { position: 7, key: 'e', instrument: 'hihat' }
+            ],
+            tolerance: 110,
             loops: 2
         }
     ];
@@ -140,7 +250,6 @@ const Puzzles = (function() {
         return puzzle.symbols.filter(s => s.position === position);
     }
 
-    // Get all unique positions that have symbols in a puzzle
     function getActivePositions(puzzle) {
         return [...new Set(puzzle.symbols.map(s => s.position))].sort((a, b) => a - b);
     }
