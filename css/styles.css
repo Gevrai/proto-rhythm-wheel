@@ -99,11 +99,20 @@ body {
     filter: drop-shadow(0 0 15px #e74c3c);
 }
 
+.center-light.tap {
+    fill: #fff;
+    stroke: #fff;
+}
+
 .center-text {
     fill: #fff;
     font-size: 14px;
     font-weight: bold;
     pointer-events: none;
+}
+
+.center-light.tap + .center-text {
+    fill: #e74c3c;
 }
 
 .position-marker {

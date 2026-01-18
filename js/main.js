@@ -55,8 +55,19 @@ const Game = (function() {
         const wheelSvg = document.getElementById('wheel');
         if (wheelSvg) {
             wheelSvg.addEventListener('click', (event) => {
-                if (event.target.classList.contains('center-light')) {
-                    handleTapTempo(event);
+                const centerLight = wheelSvg.querySelector('.center-light');
+                if (!centerLight) return;
+
+                // Check if clicked on center light or center text
+                const rect = centerLight.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                const radius = rect.width / 2;
+                const dx = event.clientX - centerX;
+                const dy = event.clientY - centerY;
+
+                if (dx * dx + dy * dy <= radius * radius) {
+                    handleTapTempo(centerLight);
                 }
             });
         }
@@ -326,8 +337,12 @@ const Game = (function() {
         }
     }
 
-    function handleTapTempo(event) {
-        event.stopPropagation(); // Don't trigger startOnClick
+    function handleTapTempo(centerLight) {
+        // Visual feedback
+        centerLight.classList.add('tap');
+        setTimeout(() => {
+            centerLight.classList.remove('tap');
+        }, 20);
 
         const now = performance.now();
         const timeSinceLastTap = now - lastTapTime;
