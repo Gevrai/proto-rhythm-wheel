@@ -1,24 +1,58 @@
 /**
- * Input module - QWER keyboard handling
+ * Input module - Keyboard handling with customizable key mapping
  * Captures key presses and timestamps for hit detection
  */
 
 const Input = (function() {
-    const VALID_KEYS = ['q', 'w', 'e', 'r'];
+    // Default key to instrument mapping
+    let keyToInstrument = {
+        'q': 'kick',
+        'w': 'snare',
+        'e': 'hihat',
+        'r': 'other'
+    };
+
+    // Reverse mapping: instrument to key
+    let instrumentToKey = {
+        'kick': 'q',
+        'snare': 'w',
+        'hihat': 'e',
+        'other': 'r'
+    };
+
     let onKeyPress = null;
     let enabled = false;
     let keyStates = {}; // Track which keys are currently pressed
+
+    // Remapping state
+    let remappingInstrument = null;
+    let onRemapComplete = null;
 
     function init() {
         document.addEventListener('keydown', handleKeyDown);
         document.addEventListener('keyup', handleKeyUp);
     }
 
+    function getValidKeys() {
+        return Object.keys(keyToInstrument);
+    }
+
+    function isValidKey(key) {
+        return key in keyToInstrument;
+    }
+
     function handleKeyDown(event) {
         const key = event.key.toLowerCase();
 
+        // If we're remapping, handle it specially
+        if (remappingInstrument) {
+            handleRemapKey(key);
+            event.preventDefault();
+            return;
+        }
+
         // Ignore if not a valid key or if already pressed (prevent key repeat)
-        if (!VALID_KEYS.includes(key) || keyStates[key]) {
+        if (!isValidKey(key) || keyStates[key]) {
             return;
         }
 
@@ -43,10 +77,54 @@ const Input = (function() {
         }
     }
 
+    function handleRemapKey(key) {
+        // Check if it's a valid alphanumeric lowercase key
+        const isAlphanumeric = /^[a-z0-9]$/.test(key);
+
+        if (isAlphanumeric) {
+            // Check if this key is already assigned to another instrument
+            const existingInstrument = keyToInstrument[key];
+
+            if (existingInstrument && existingInstrument !== remappingInstrument) {
+                // Swap keys between instruments
+                const oldKey = instrumentToKey[remappingInstrument];
+
+                // Update the other instrument to use the old key
+                instrumentToKey[existingInstrument] = oldKey;
+                keyToInstrument[oldKey] = existingInstrument;
+            } else {
+                // Remove old key mapping for this instrument
+                const oldKey = instrumentToKey[remappingInstrument];
+                delete keyToInstrument[oldKey];
+            }
+
+            // Set new key for this instrument
+            keyToInstrument[key] = remappingInstrument;
+            instrumentToKey[remappingInstrument] = key;
+
+            // Complete remapping
+            const instrument = remappingInstrument;
+            finishRemapping(true, instrument, key);
+        } else {
+            // Cancel remapping on non-alphanumeric key
+            finishRemapping(false);
+        }
+    }
+
+    function finishRemapping(success, instrument, newKey) {
+        const callback = onRemapComplete;
+        remappingInstrument = null;
+        onRemapComplete = null;
+
+        if (callback) {
+            callback(success, instrument, newKey);
+        }
+    }
+
     function handleKeyUp(event) {
         const key = event.key.toLowerCase();
 
-        if (!VALID_KEYS.includes(key)) {
+        if (!isValidKey(key)) {
             return;
         }
 
@@ -58,16 +136,23 @@ const Input = (function() {
     }
 
     function showKeyPress(key) {
-        const keyItem = document.querySelector(`.key-${key}`);
-        if (keyItem) {
-            keyItem.classList.add('pressed');
+        // Find key item by instrument, not by key class
+        const instrument = keyToInstrument[key];
+        if (instrument) {
+            const keyItem = document.querySelector(`.key-item[data-instrument="${instrument}"]`);
+            if (keyItem) {
+                keyItem.classList.add('pressed');
+            }
         }
     }
 
     function hideKeyPress(key) {
-        const keyItem = document.querySelector(`.key-${key}`);
-        if (keyItem) {
-            keyItem.classList.remove('pressed');
+        const instrument = keyToInstrument[key];
+        if (instrument) {
+            const keyItem = document.querySelector(`.key-item[data-instrument="${instrument}"]`);
+            if (keyItem) {
+                keyItem.classList.remove('pressed');
+            }
         }
     }
 
@@ -87,14 +172,29 @@ const Input = (function() {
         return enabled;
     }
 
-    function getKeyInstrument(key) {
-        const keyMap = {
-            'q': 'kick',
-            'w': 'snare',
-            'e': 'hihat',
-            'r': 'other'
-        };
-        return keyMap[key.toLowerCase()];
+    function getInstrumentForKey(key) {
+        return keyToInstrument[key.toLowerCase()];
+    }
+
+    function getKeyForInstrument(instrument) {
+        return instrumentToKey[instrument];
+    }
+
+    function startRemapping(instrument, callback) {
+        remappingInstrument = instrument;
+        onRemapComplete = callback;
+    }
+
+    function isRemapping() {
+        return remappingInstrument !== null;
+    }
+
+    function getRemappingInstrument() {
+        return remappingInstrument;
+    }
+
+    function cancelRemapping() {
+        finishRemapping(false);
     }
 
     function destroy() {
@@ -108,8 +208,13 @@ const Input = (function() {
         enable,
         disable,
         isEnabled,
-        getKeyInstrument,
+        getInstrumentForKey,
+        getKeyForInstrument,
+        startRemapping,
+        isRemapping,
+        getRemappingInstrument,
+        cancelRemapping,
         destroy,
-        VALID_KEYS
+        getValidKeys
     };
 })();

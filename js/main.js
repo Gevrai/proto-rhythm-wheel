@@ -60,6 +60,9 @@ const Game = (function() {
             genreSelectEl.addEventListener('change', handleGenreChange);
         }
 
+        // Key legend click handlers for remapping
+        setupKeyLegendRemapping();
+
         // Set initial tempo and subdivisions from genre
         Timing.setTempo(Puzzles.getDefaultTempo());
         Timing.setSubdivisions(Puzzles.getMasterSubdivision());
@@ -109,6 +112,66 @@ const Game = (function() {
         });
     }
 
+    function setupKeyLegendRemapping() {
+        const keyItems = document.querySelectorAll('.key-item[data-instrument]');
+
+        keyItems.forEach(item => {
+            item.style.cursor = 'pointer';
+            item.addEventListener('click', () => {
+                const instrument = item.getAttribute('data-instrument');
+                if (!instrument) return;
+
+                // If already remapping this instrument, cancel
+                if (Input.isRemapping() && Input.getRemappingInstrument() === instrument) {
+                    Input.cancelRemapping();
+                    item.classList.remove('remapping');
+                    statusMessageEl.textContent = currentPuzzle ? currentPuzzle.description : 'Click anywhere to start';
+                    return;
+                }
+
+                // Cancel any existing remapping
+                if (Input.isRemapping()) {
+                    const prevInstrument = Input.getRemappingInstrument();
+                    const prevItem = document.querySelector(`.key-item[data-instrument="${prevInstrument}"]`);
+                    if (prevItem) prevItem.classList.remove('remapping');
+                    Input.cancelRemapping();
+                }
+
+                // Start remapping for this instrument
+                item.classList.add('remapping');
+                statusMessageEl.textContent = `Press a key for ${instrument}...`;
+
+                Input.startRemapping(instrument, (success, remappedInstrument, newKey) => {
+                    item.classList.remove('remapping');
+
+                    if (success) {
+                        // Update the key legend display
+                        updateKeyLegendDisplay();
+                        // Update wheel symbol labels
+                        Wheel.updateSymbolLabels();
+                        statusMessageEl.textContent = currentPuzzle ? currentPuzzle.description : 'Click anywhere to start';
+                    } else {
+                        statusMessageEl.textContent = currentPuzzle ? currentPuzzle.description : 'Click anywhere to start';
+                    }
+                });
+            });
+        });
+    }
+
+    function updateKeyLegendDisplay() {
+        const instruments = ['kick', 'snare', 'hihat', 'other'];
+        instruments.forEach(instrument => {
+            const item = document.querySelector(`.key-item[data-instrument="${instrument}"]`);
+            if (item) {
+                const keySpan = item.querySelector('.key');
+                if (keySpan) {
+                    const currentKey = Input.getKeyForInstrument(instrument);
+                    keySpan.textContent = currentKey.toUpperCase();
+                }
+            }
+        });
+    }
+
     function handleGenreChange(event) {
         const genreId = event.target.value;
         changeGenre(genreId);
@@ -142,9 +205,10 @@ const Game = (function() {
         if (started) return;
 
         const key = event.key.toLowerCase();
-        const validKeys = ['q', 'w', 'e', 'r'];
 
-        if (!validKeys.includes(key)) return;
+        // Check if it's a valid instrument key (supports remapped keys)
+        const instrument = Input.getInstrumentForKey(key);
+        if (!instrument) return;
 
         started = true;
         document.removeEventListener('keydown', startOnFirstKey);
@@ -307,9 +371,13 @@ const Game = (function() {
         // Always play the sound immediately
         Synth.playByKey(key);
 
-        // Find the closest expected hit for this key (keep reference to original)
+        // Get the instrument for this key (supports remapped keys)
+        const instrument = Input.getInstrumentForKey(key);
+        if (!instrument) return;
+
+        // Find the closest expected hit for this instrument (keep reference to original)
         const candidates = expectedHits
-            .filter(e => e.key === key && !e.hit)
+            .filter(e => e.instrument === instrument && !e.hit)
             .map(e => ({
                 original: e, // Keep reference to original object
                 timingError: (timestamp - e.expectedTime) * 1000 // Convert to ms
@@ -360,8 +428,8 @@ const Game = (function() {
 
         // When paused, any instrument key or space restarts
         if (paused) {
-            const validKeys = ['q', 'w', 'e', 'r'];
-            if (validKeys.includes(key)) {
+            const instrument = Input.getInstrumentForKey(key);
+            if (instrument) {
                 Synth.playByKey(key);
                 restartCurrentLevel();
                 return;

@@ -9,13 +9,15 @@ const Puzzles = (function() {
     let currentPuzzles = [];
     let loaded = false;
 
-    // Instrument to key mapping
-    const INSTRUMENT_KEYS = {
-        kick: 'q',
-        snare: 'w',
-        hihat: 'e',
-        other: 'r'
-    };
+    // Get key for instrument from Input module (with fallback)
+    function getKeyForInstrument(instrument) {
+        if (typeof Input !== 'undefined' && Input.getKeyForInstrument) {
+            return Input.getKeyForInstrument(instrument);
+        }
+        // Fallback mapping
+        const fallback = { kick: 'q', snare: 'w', hihat: 'e', other: 'r' };
+        return fallback[instrument];
+    }
 
     // Calculate GCD of two numbers
     function gcd(a, b) {
@@ -36,7 +38,7 @@ const Puzzles = (function() {
     function expandPattern(pattern) {
         const symbols = [];
         for (const [instrument, positions] of Object.entries(pattern)) {
-            const key = INSTRUMENT_KEYS[instrument];
+            const key = getKeyForInstrument(instrument);
             if (!key) continue;
             for (const position of positions) {
                 symbols.push({ position, key, instrument });

@@ -163,14 +163,15 @@ const Synth = (function() {
     function playByKey(key, time) {
         if (!audioContext) return;
 
-        const keyMap = {
-            'q': 'kick',
-            'w': 'snare',
-            'e': 'hihat',
-            'r': 'other'
-        };
+        // Use Input module's key mapping if available, fallback to defaults
+        let instrument;
+        if (typeof Input !== 'undefined' && Input.getInstrumentForKey) {
+            instrument = Input.getInstrumentForKey(key);
+        } else {
+            const keyMap = { 'q': 'kick', 'w': 'snare', 'e': 'hihat', 'r': 'other' };
+            instrument = keyMap[key.toLowerCase()];
+        }
 
-        const instrument = keyMap[key.toLowerCase()];
         if (instrument) {
             playSound(instrument, time || audioContext.currentTime);
         }

@@ -197,6 +197,14 @@ const Wheel = (function() {
         });
     }
 
+    function getKeyForInstrument(instrument) {
+        if (typeof Input !== 'undefined' && Input.getKeyForInstrument) {
+            return Input.getKeyForInstrument(instrument);
+        }
+        const fallback = { kick: 'q', snare: 'w', hihat: 'e', other: 'r' };
+        return fallback[instrument];
+    }
+
     function createSymbol(symbol, pos) {
         const group = document.createElementNS(SVG_NS, 'g');
         group.setAttribute('class', 'symbol');
@@ -213,19 +221,32 @@ const Wheel = (function() {
 
         shape.setAttribute('class', 'symbol-shape');
 
-        // Add key label
+        // Add key label - use current key mapping
+        const currentKey = getKeyForInstrument(symbol.instrument);
         const label = document.createElementNS(SVG_NS, 'text');
         label.setAttribute('x', 0);
         label.setAttribute('y', 0);
         label.setAttribute('dy', '0.35em');
         label.setAttribute('class', 'symbol-label');
         label.setAttribute('text-anchor', 'middle');
-        label.textContent = symbol.key.toUpperCase();
+        label.textContent = currentKey.toUpperCase();
 
         group.appendChild(shape);
         group.appendChild(label);
 
         return group;
+    }
+
+    function updateSymbolLabels() {
+        // Update all symbol labels with current key mappings
+        symbolElements.forEach(el => {
+            const instrument = el.getAttribute('data-instrument');
+            const label = el.querySelector('.symbol-label');
+            if (instrument && label) {
+                const currentKey = getKeyForInstrument(instrument);
+                label.textContent = currentKey.toUpperCase();
+            }
+        });
     }
 
     function pulseCenterLight() {
@@ -312,6 +333,7 @@ const Wheel = (function() {
         clearSymbolStates,
         setCenterText,
         getMasterSubdivision,
+        updateSymbolLabels,
         COLORS
     };
 })();
