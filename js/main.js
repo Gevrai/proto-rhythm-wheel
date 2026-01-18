@@ -16,6 +16,10 @@ const Game = (function() {
 
     // DOM elements
     let puzzleNameEl, statusMessageEl, genreSelectEl;
+    let keyLegendEl, beatPadEl;
+
+    // Input mode: 'keyboard' or 'touch'
+    let inputMode = 'keyboard';
 
     // Animation frame for visual sync
     let animationFrameId = null;
@@ -37,6 +41,8 @@ const Game = (function() {
         puzzleNameEl = document.getElementById('puzzle-name');
         statusMessageEl = document.getElementById('status-message');
         genreSelectEl = document.getElementById('genre-select');
+        keyLegendEl = document.querySelector('.key-legend');
+        beatPadEl = document.querySelector('.beat-pad');
 
         // Load beats from JSON
         statusMessageEl.textContent = 'Loading beats...';
@@ -62,6 +68,20 @@ const Game = (function() {
 
         // Key legend click handlers for remapping
         setupKeyLegendRemapping();
+
+        // Set up beat pads for touch input
+        setupBeatPads();
+
+        // Set up input mode detection and switching
+        setupInputModeDetection();
+
+        // Detect and set initial input mode
+        const initialMode = detectInitialInputMode();
+        inputMode = initialMode; // Set directly to avoid triggering setInputMode logic before elements ready
+        if (initialMode === 'touch') {
+            keyLegendEl.classList.add('hidden');
+            beatPadEl.classList.remove('hidden');
+        }
 
         // Set initial tempo and subdivisions from genre
         Timing.setTempo(Puzzles.getDefaultTempo());
@@ -91,8 +111,12 @@ const Game = (function() {
         // Load first puzzle (visual only)
         loadPuzzle(0);
 
-        // Wait for instrument key to start (browser audio policy)
-        statusMessageEl.textContent = 'Press Q, W, E, or R to start';
+        // Wait for input to start (browser audio policy)
+        if (inputMode === 'touch') {
+            statusMessageEl.textContent = 'Tap a pad to start';
+        } else {
+            statusMessageEl.textContent = 'Press Q, W, E, or R to start';
+        }
         document.addEventListener('keydown', startOnFirstKey);
 
         console.log('Rhythm Wheel initialized - continuous mode');
@@ -170,6 +194,154 @@ const Game = (function() {
                 }
             }
         });
+    }
+
+    function detectInitialInputMode() {
+        // Check for touch capability and screen size to predict input mode
+        const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        const isSmallScreen = window.innerWidth <= 768;
+        const isMobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        // Predict touch mode if device has touch AND (small screen OR mobile user agent)
+        if (hasTouch && (isSmallScreen || isMobileUserAgent)) {
+            return 'touch';
+        }
+        return 'keyboard';
+    }
+
+    function setInputMode(mode) {
+        if (inputMode === mode) return;
+
+        inputMode = mode;
+
+        if (mode === 'touch') {
+            keyLegendEl.classList.add('hidden');
+            beatPadEl.classList.remove('hidden');
+            statusMessageEl.textContent = currentPuzzle ? currentPuzzle.description : 'Tap pads to start';
+        } else {
+            keyLegendEl.classList.remove('hidden');
+            beatPadEl.classList.add('hidden');
+            if (!started) {
+                statusMessageEl.textContent = 'Press Q, W, E, or R to start';
+            } else if (currentPuzzle) {
+                statusMessageEl.textContent = currentPuzzle.description;
+            }
+        }
+    }
+
+    function setupInputModeDetection() {
+        // Switch to keyboard mode on any keyboard input
+        document.addEventListener('keydown', (event) => {
+            // Ignore modifier keys alone
+            if (['Shift', 'Control', 'Alt', 'Meta'].includes(event.key)) return;
+            setInputMode('keyboard');
+        });
+
+        // Switch to touch mode on touch input
+        document.addEventListener('touchstart', () => {
+            setInputMode('touch');
+        }, { passive: true });
+    }
+
+    function setupBeatPads() {
+        beatPadEl = document.querySelector('.beat-pad');
+        if (!beatPadEl) return;
+
+        const pads = beatPadEl.querySelectorAll('.pad');
+
+        pads.forEach(pad => {
+            const instrument = pad.getAttribute('data-instrument');
+            if (!instrument) return;
+
+            // Handle touch start
+            pad.addEventListener('touchstart', (event) => {
+                event.preventDefault();
+                handlePadPress(instrument, pad);
+            }, { passive: false });
+
+            // Handle touch end
+            pad.addEventListener('touchend', (event) => {
+                event.preventDefault();
+                pad.classList.remove('pressed');
+            }, { passive: false });
+
+            // Also handle mouse for testing on desktop
+            pad.addEventListener('mousedown', (event) => {
+                event.preventDefault();
+                handlePadPress(instrument, pad);
+            });
+
+            pad.addEventListener('mouseup', () => {
+                pad.classList.remove('pressed');
+            });
+
+            pad.addEventListener('mouseleave', () => {
+                pad.classList.remove('pressed');
+            });
+        });
+    }
+
+    function handlePadPress(instrument, padElement) {
+        // Visual feedback
+        padElement.classList.add('pressed');
+
+        // Play the sound
+        Synth.playSound(instrument);
+
+        // Start game if not started
+        if (!started) {
+            started = true;
+            document.removeEventListener('keydown', startOnFirstKey);
+            startPlaying();
+            return;
+        }
+
+        // Restart if paused
+        if (paused) {
+            restartCurrentLevel();
+            return;
+        }
+
+        // Process as game input if enabled
+        if (!Input.isEnabled()) return;
+
+        // Get high-precision timestamp
+        const timestamp = Timing.getCurrentTime();
+
+        // Find the closest expected hit for this instrument
+        const candidates = expectedHits
+            .filter(e => e.instrument === instrument && !e.hit)
+            .map(e => ({
+                original: e,
+                timingError: (timestamp - e.expectedTime) * 1000
+            }))
+            .sort((a, b) => Math.abs(a.timingError) - Math.abs(b.timingError));
+
+        const match = candidates[0];
+
+        if (match) {
+            const tolerance = currentPuzzle.tolerance;
+            const timingError = match.timingError;
+
+            if (Math.abs(timingError) <= tolerance) {
+                match.original.hit = true;
+                Feedback.evaluateHit(timingError, tolerance);
+                Wheel.highlightSymbol(match.original.position, true);
+                Wheel.markSymbolComplete(match.original.position);
+            } else {
+                if (timingError < -tolerance) {
+                    Feedback.showEarly();
+                } else {
+                    Feedback.showLate();
+                }
+                consecutiveSuccessfulLoops = 0;
+                statusMessageEl.textContent = currentPuzzle.description;
+            }
+        } else {
+            Feedback.showWrongKey();
+            consecutiveSuccessfulLoops = 0;
+            statusMessageEl.textContent = currentPuzzle.description;
+        }
     }
 
     function handleGenreChange(event) {
