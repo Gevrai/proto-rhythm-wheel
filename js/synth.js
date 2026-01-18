@@ -5,27 +5,36 @@
 
 const Synth = (function() {
     let audioContext = null;
+    let snareNoiseBuffer = null;
+    let hihatNoiseBuffer = null;
 
     function init(ctx) {
         audioContext = ctx;
+        // Pre-create noise buffers to avoid lag
+        snareNoiseBuffer = createNoiseBuffer(0.2);
+        hihatNoiseBuffer = createNoiseBuffer(0.15);
+    }
+
+    function ensureAudioContext() {
+        if (audioContext && audioContext.state === 'suspended') {
+            audioContext.resume();
+        }
     }
 
     function playKick(time) {
         if (!audioContext) return;
+        ensureAudioContext();
 
-        // Create oscillator for the kick body
         const osc = audioContext.createOscillator();
         const gain = audioContext.createGain();
 
         osc.connect(gain);
         gain.connect(audioContext.destination);
 
-        // Kick drum: sine wave with fast pitch drop
         osc.type = 'sine';
         osc.frequency.setValueAtTime(150, time);
         osc.frequency.exponentialRampToValueAtTime(40, time + 0.1);
 
-        // Envelope
         gain.gain.setValueAtTime(1, time);
         gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
 
@@ -34,12 +43,12 @@ const Synth = (function() {
     }
 
     function playSnare(time) {
-        if (!audioContext) return;
+        if (!audioContext || !snareNoiseBuffer) return;
+        ensureAudioContext();
 
         // Noise component (snare wires)
-        const noiseBuffer = createNoiseBuffer(0.2);
         const noise = audioContext.createBufferSource();
-        noise.buffer = noiseBuffer;
+        noise.buffer = snareNoiseBuffer;
 
         const noiseFilter = audioContext.createBiquadFilter();
         noiseFilter.type = 'highpass';
@@ -74,14 +83,12 @@ const Synth = (function() {
     }
 
     function playHihat(time) {
-        if (!audioContext) return;
+        if (!audioContext || !hihatNoiseBuffer) return;
+        ensureAudioContext();
 
-        // Hi-hat is filtered noise
-        const noiseBuffer = createNoiseBuffer(0.15);
         const noise = audioContext.createBufferSource();
-        noise.buffer = noiseBuffer;
+        noise.buffer = hihatNoiseBuffer;
 
-        // Highpass filter for bright metallic sound
         const highpass = audioContext.createBiquadFilter();
         highpass.type = 'highpass';
         highpass.frequency.value = 5000;
@@ -100,28 +107,27 @@ const Synth = (function() {
 
     function playOther(time) {
         if (!audioContext) return;
+        ensureAudioContext();
 
-        const now = time || audioContext.currentTime;
-
-        // "Other" - a simple bell/ping sound
         const osc = audioContext.createOscillator();
         const gain = audioContext.createGain();
 
         osc.type = 'triangle';
-        osc.frequency.setValueAtTime(660, now); // E5
-        osc.frequency.exponentialRampToValueAtTime(440, now + 0.1); // Drop to A4
+        osc.frequency.setValueAtTime(660, time);
+        osc.frequency.exponentialRampToValueAtTime(440, time + 0.1);
 
         osc.connect(gain);
         gain.connect(audioContext.destination);
 
-        gain.gain.setValueAtTime(0.5, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+        gain.gain.setValueAtTime(0.5, time);
+        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.25);
 
-        osc.start(now);
-        osc.stop(now + 0.25);
+        osc.start(time);
+        osc.stop(time + 0.25);
     }
 
     function createNoiseBuffer(duration) {
+        if (!audioContext) return null;
         const sampleRate = audioContext.sampleRate;
         const bufferSize = sampleRate * duration;
         const buffer = audioContext.createBuffer(1, bufferSize, sampleRate);
@@ -135,7 +141,8 @@ const Synth = (function() {
     }
 
     function playSound(instrument, time) {
-        time = time || (audioContext ? audioContext.currentTime : 0);
+        if (!audioContext) return;
+        time = time || audioContext.currentTime;
 
         switch (instrument) {
             case 'kick':
@@ -154,6 +161,8 @@ const Synth = (function() {
     }
 
     function playByKey(key, time) {
+        if (!audioContext) return;
+
         const keyMap = {
             'q': 'kick',
             'w': 'snare',
@@ -163,13 +172,13 @@ const Synth = (function() {
 
         const instrument = keyMap[key.toLowerCase()];
         if (instrument) {
-            playSound(instrument, time);
+            playSound(instrument, time || audioContext.currentTime);
         }
     }
 
-    // Play a click/metronome sound for countdown
     function playClick(time, isDownbeat = false) {
         if (!audioContext) return;
+        ensureAudioContext();
 
         const osc = audioContext.createOscillator();
         const gain = audioContext.createGain();
