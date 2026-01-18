@@ -45,7 +45,7 @@ const Wheel = (function() {
         svgElement.appendChild(outerRing);
 
         // Draw inner ring
-        const innerRing = createCircle(CENTER_X, CENTER_Y, WHEEL_RADIUS - 40, 'wheel-inner-ring');
+        const innerRing = createCircle(CENTER_X, CENTER_Y, WHEEL_RADIUS - 25, 'wheel-inner-ring');
         svgElement.appendChild(innerRing);
 
         // Draw center light
@@ -122,14 +122,41 @@ const Wheel = (function() {
         symbolElements.forEach(el => el.remove());
         symbolElements = [];
 
+        // Group symbols by position
+        const symbolsByPosition = {};
         symbols.forEach(symbol => {
-            const angle = getAngleForPosition(symbol.position);
-            const pos = getPositionOnCircle(angle, WHEEL_RADIUS - 60);
-            const element = createSymbol(symbol, pos);
-            element.setAttribute('data-position', symbol.position);
-            element.setAttribute('data-key', symbol.key);
-            symbolElements.push(element);
-            svgElement.appendChild(element);
+            if (!symbolsByPosition[symbol.position]) {
+                symbolsByPosition[symbol.position] = [];
+            }
+            symbolsByPosition[symbol.position].push(symbol);
+        });
+
+        // Render each group with offsets to avoid overlap
+        Object.keys(symbolsByPosition).forEach(position => {
+            const group = symbolsByPosition[position];
+            const angle = getAngleForPosition(parseInt(position));
+
+            // Calculate radial direction (from center toward beat marker)
+            const radialX = Math.cos(angle);
+            const radialY = Math.sin(angle);
+
+            // Space symbols along the radial line, first symbol at outer edge
+            const spacing = SYMBOL_SIZE * 1.1;
+            const outerRadius = WHEEL_RADIUS - 35;
+
+            group.forEach((symbol, index) => {
+                const radius = outerRadius - index * spacing;
+                const pos = {
+                    x: CENTER_X + radialX * radius,
+                    y: CENTER_Y + radialY * radius
+                };
+
+                const element = createSymbol(symbol, pos);
+                element.setAttribute('data-position', symbol.position);
+                element.setAttribute('data-key', symbol.key);
+                symbolElements.push(element);
+                svgElement.appendChild(element);
+            });
         });
     }
 
