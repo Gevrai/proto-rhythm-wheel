@@ -1,6 +1,6 @@
 /**
  * Wheel module - SVG wheel rendering
- * Renders the circular wheel with 8 position markers and symbols
+ * Renders the circular wheel with per-instrument position markers
  */
 
 const Wheel = (function() {
@@ -8,14 +8,18 @@ const Wheel = (function() {
     let svgElement = null;
     let centerLight = null;
     let centerText = null;
-    let positionMarkers = [];
+    let positionMarkers = {}; // Keyed by instrument
     let symbolElements = [];
 
     const CENTER_X = 200;
     const CENTER_Y = 200;
     const WHEEL_RADIUS = 150;
-    const MARKER_RADIUS = 8;
+    const MARKER_RADIUS = 4;
     const SYMBOL_SIZE = 22;
+
+    // Current subdivisions per instrument
+    let instrumentSubdivisions = { kick: 8, snare: 8, hihat: 8, other: 8 };
+    let masterSubdivision = 8;
 
     // Colors for each instrument
     const COLORS = {
@@ -33,6 +37,9 @@ const Wheel = (function() {
         other: 130
     };
 
+    // Instrument order (inner to outer)
+    const INSTRUMENT_ORDER = ['kick', 'snare', 'hihat', 'other'];
+
     function init() {
         svgElement = document.getElementById('wheel');
         if (!svgElement) {
@@ -42,23 +49,51 @@ const Wheel = (function() {
         render();
     }
 
-    function render() {
+    function render(instSubs = null, masterSub = null) {
+        if (instSubs) instrumentSubdivisions = instSubs;
+        if (masterSub) masterSubdivision = masterSub;
+
         // Clear existing content
         svgElement.innerHTML = '';
-        positionMarkers = [];
+        positionMarkers = {};
         symbolElements = [];
 
         // Draw outer ring
         const outerRing = createCircle(CENTER_X, CENTER_Y, WHEEL_RADIUS, 'wheel-ring');
         svgElement.appendChild(outerRing);
 
-        // Draw instrument circles (faint colored rings for each instrument lane)
-        const instrumentOrder = ['other', 'hihat', 'snare', 'kick']; // Draw outer to inner
-        instrumentOrder.forEach(instrument => {
-            const circle = createCircle(CENTER_X, CENTER_Y, INSTRUMENT_RADII[instrument], 'instrument-circle');
+        // Draw instrument circles with position markers
+        INSTRUMENT_ORDER.slice().reverse().forEach(instrument => {
+            const radius = INSTRUMENT_RADII[instrument];
+            const subdivisions = instrumentSubdivisions[instrument] || 8;
+
+            // Draw the instrument circle
+            const circle = createCircle(CENTER_X, CENTER_Y, radius, 'instrument-circle');
             circle.setAttribute('stroke', COLORS[instrument]);
             circle.classList.add(`instrument-circle-${instrument}`);
             svgElement.appendChild(circle);
+
+            // Draw position markers for this instrument
+            positionMarkers[instrument] = [];
+            for (let i = 0; i < subdivisions; i++) {
+                const angle = getAngleForInstrumentPosition(i, subdivisions);
+                const pos = getPositionOnCircle(angle, radius);
+
+                const marker = createCircle(pos.x, pos.y, MARKER_RADIUS, 'instrument-marker');
+                marker.setAttribute('fill', COLORS[instrument]);
+                marker.setAttribute('data-instrument', instrument);
+                marker.setAttribute('data-position', i);
+                marker.style.opacity = '0.4';
+
+                // Make first position (beat 1) slightly larger
+                if (i === 0) {
+                    marker.setAttribute('r', MARKER_RADIUS + 1);
+                    marker.style.opacity = '0.6';
+                }
+
+                positionMarkers[instrument].push(marker);
+                svgElement.appendChild(marker);
+            }
         });
 
         // Draw center light
@@ -75,43 +110,37 @@ const Wheel = (function() {
         centerText.textContent = '80';
         svgElement.appendChild(centerText);
 
-        // Draw 8 position markers around the wheel
-        for (let i = 0; i < 8; i++) {
-            const angle = getAngleForPosition(i);
+        // Draw beat numbers on outer ring (always 4 beats)
+        for (let beat = 0; beat < 4; beat++) {
+            const angle = getAngleForInstrumentPosition(beat, 4);
             const pos = getPositionOnCircle(angle, WHEEL_RADIUS);
 
-            const marker = createCircle(pos.x, pos.y, MARKER_RADIUS, 'position-marker');
-            marker.setAttribute('data-position', i);
-
-            // Main beats (0, 2, 4, 6) are larger
-            if (i % 2 === 0) {
-                marker.setAttribute('r', MARKER_RADIUS + 2);
-                marker.classList.add('main-beat');
-            }
-
-            positionMarkers.push(marker);
+            // Beat marker on outer ring
+            const marker = createCircle(pos.x, pos.y, MARKER_RADIUS + 4, 'position-marker main-beat');
             svgElement.appendChild(marker);
 
-            // Add beat numbers for main beats
-            if (i % 2 === 0) {
-                const beatNumber = (i / 2) + 1;
-                const labelPos = getPositionOnCircle(angle, WHEEL_RADIUS + 25);
-                const label = document.createElementNS(SVG_NS, 'text');
-                label.setAttribute('x', labelPos.x);
-                label.setAttribute('y', labelPos.y);
-                label.setAttribute('class', 'beat-label');
-                label.setAttribute('text-anchor', 'middle');
-                label.setAttribute('dominant-baseline', 'central');
-                label.textContent = beatNumber;
-                svgElement.appendChild(label);
-            }
+            // Beat label
+            const labelPos = getPositionOnCircle(angle, WHEEL_RADIUS + 25);
+            const label = document.createElementNS(SVG_NS, 'text');
+            label.setAttribute('x', labelPos.x);
+            label.setAttribute('y', labelPos.y);
+            label.setAttribute('class', 'beat-label');
+            label.setAttribute('text-anchor', 'middle');
+            label.setAttribute('dominant-baseline', 'central');
+            label.textContent = beat + 1;
+            svgElement.appendChild(label);
         }
     }
 
-    function getAngleForPosition(position) {
+    function getAngleForInstrumentPosition(position, subdivisions) {
         // Position 0 is at top (12 o'clock), going clockwise
-        // -90 degrees to start at top, then add position * 45 degrees
-        return (-90 + position * 45) * (Math.PI / 180);
+        const degreesPerPosition = 360 / subdivisions;
+        return (-90 + position * degreesPerPosition) * (Math.PI / 180);
+    }
+
+    function getAngleForMasterPosition(position) {
+        const degreesPerPosition = 360 / masterSubdivision;
+        return (-90 + position * degreesPerPosition) * (Math.PI / 180);
     }
 
     function getPositionOnCircle(angle, radius) {
@@ -130,22 +159,38 @@ const Wheel = (function() {
         return circle;
     }
 
-    function renderSymbols(symbols) {
+    function renderSymbols(symbols, instSubs, masterSub) {
+        // Update subdivisions if provided
+        if (instSubs && masterSub) {
+            const needsRerender = JSON.stringify(instSubs) !== JSON.stringify(instrumentSubdivisions) ||
+                                  masterSub !== masterSubdivision;
+            if (needsRerender) {
+                render(instSubs, masterSub);
+            }
+        }
+
         // Clear existing symbols
         symbolElements.forEach(el => el.remove());
         symbolElements = [];
 
-        // Place each symbol on its instrument's designated circle
+        // Place each symbol on its instrument's circle at the correct position
         symbols.forEach(symbol => {
-            const angle = getAngleForPosition(symbol.position);
-            const radius = INSTRUMENT_RADII[symbol.instrument] || INSTRUMENT_RADII.other;
+            const instrument = symbol.instrument;
+            const instSubdiv = instrumentSubdivisions[instrument] || 8;
+
+            // Use original position for visual placement on instrument circle
+            const originalPos = symbol.originalPosition !== undefined ? symbol.originalPosition : symbol.position;
+            const angle = getAngleForInstrumentPosition(originalPos, instSubdiv);
+            const radius = INSTRUMENT_RADII[instrument] || INSTRUMENT_RADII.other;
             const pos = {
                 x: CENTER_X + Math.cos(angle) * radius,
                 y: CENTER_Y + Math.sin(angle) * radius
             };
 
             const element = createSymbol(symbol, pos);
-            element.setAttribute('data-position', symbol.position);
+            element.setAttribute('data-position', symbol.position); // Master position for timing
+            element.setAttribute('data-original-position', originalPos);
+            element.setAttribute('data-instrument', instrument);
             element.setAttribute('data-key', symbol.key);
             symbolElements.push(element);
             svgElement.appendChild(element);
@@ -191,14 +236,30 @@ const Wheel = (function() {
         }, 200);
     }
 
-    function highlightPosition(position, className = 'highlight') {
-        const marker = positionMarkers[position];
-        if (marker) {
-            marker.classList.add(className);
-            setTimeout(() => {
-                marker.classList.remove(className);
-            }, 200);
-        }
+    function highlightPosition(masterPosition) {
+        // Highlight position markers on each instrument circle that corresponds to this master position
+        INSTRUMENT_ORDER.forEach(instrument => {
+            const instSubdiv = instrumentSubdivisions[instrument];
+            const markers = positionMarkers[instrument];
+            if (!markers) return;
+
+            // Calculate which instrument position corresponds to this master position
+            const instrumentPos = Math.round(masterPosition * instSubdiv / masterSubdivision);
+
+            // Only highlight if it's an exact hit (on the grid)
+            const expectedMaster = Math.round(instrumentPos * masterSubdivision / instSubdiv);
+            if (expectedMaster === masterPosition && instrumentPos < markers.length) {
+                const marker = markers[instrumentPos];
+                if (marker) {
+                    marker.style.opacity = '1';
+                    marker.setAttribute('r', MARKER_RADIUS + 2);
+                    setTimeout(() => {
+                        marker.style.opacity = instrumentPos === 0 ? '0.6' : '0.4';
+                        marker.setAttribute('r', instrumentPos === 0 ? MARKER_RADIUS + 1 : MARKER_RADIUS);
+                    }, 150);
+                }
+            }
+        });
     }
 
     function highlightSymbol(position, success) {
@@ -216,13 +277,12 @@ const Wheel = (function() {
     }
 
     function markSymbolComplete(position) {
-        const symbol = symbolElements.find(el =>
-            parseInt(el.getAttribute('data-position')) === position
-        );
-
-        if (symbol) {
-            symbol.classList.add('completed');
-        }
+        // Mark all symbols at this master position as complete
+        symbolElements.forEach(el => {
+            if (parseInt(el.getAttribute('data-position')) === position) {
+                el.classList.add('completed');
+            }
+        });
     }
 
     function clearSymbolStates() {
@@ -231,14 +291,14 @@ const Wheel = (function() {
         });
     }
 
-    function getCurrentSubdivisionAngle(subdivision) {
-        return getAngleForPosition(subdivision);
-    }
-
     function setCenterText(text) {
         if (centerText) {
             centerText.textContent = text;
         }
+    }
+
+    function getMasterSubdivision() {
+        return masterSubdivision;
     }
 
     return {
@@ -251,7 +311,7 @@ const Wheel = (function() {
         markSymbolComplete,
         clearSymbolStates,
         setCenterText,
-        getAngleForPosition,
+        getMasterSubdivision,
         COLORS
     };
 })();

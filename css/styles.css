@@ -52,6 +52,26 @@ body {
     color: #fff;
 }
 
+.genre-select {
+    background: #2c3e50;
+    color: #fff;
+    border: 1px solid #34495e;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 14px;
+    cursor: pointer;
+    outline: none;
+}
+
+.genre-select:hover {
+    border-color: #3498db;
+}
+
+.genre-select:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+}
+
 /* Main game area */
 .game-main {
     display: flex;

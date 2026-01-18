@@ -15,7 +15,7 @@ const Game = (function() {
     let isFirstMeasure = true; // Skip checking the very first measure
 
     // DOM elements
-    let puzzleNameEl, statusMessageEl;
+    let puzzleNameEl, statusMessageEl, genreSelectEl;
 
     // Animation frame for visual sync
     let animationFrameId = null;
@@ -24,9 +24,8 @@ const Game = (function() {
     let paused = false;
     let previewActive = false;
     let lastTapTime = 0;
-    const DEFAULT_TEMPO = 80;
 
-    function init() {
+    async function init() {
         // Initialize all modules
         const audioContext = Timing.init();
         Synth.init(audioContext);
@@ -37,6 +36,14 @@ const Game = (function() {
         // Get DOM elements
         puzzleNameEl = document.getElementById('puzzle-name');
         statusMessageEl = document.getElementById('status-message');
+        genreSelectEl = document.getElementById('genre-select');
+
+        // Load beats from JSON
+        statusMessageEl.textContent = 'Loading beats...';
+        await Puzzles.loadBeats();
+
+        // Populate genre selector
+        populateGenreSelector();
 
         // Set up timing callbacks
         Timing.setOnSubdivision(handleSubdivision);
@@ -48,9 +55,14 @@ const Game = (function() {
         // Hidden level navigation (J = previous, K = next)
         document.addEventListener('keydown', handleLevelNav);
 
-        // Set default tempo
-        Timing.setTempo(DEFAULT_TEMPO);
-        Timing.setSubdivisions(8);
+        // Genre selector change
+        if (genreSelectEl) {
+            genreSelectEl.addEventListener('change', handleGenreChange);
+        }
+
+        // Set initial tempo and subdivisions from genre
+        Timing.setTempo(Puzzles.getDefaultTempo());
+        Timing.setSubdivisions(Puzzles.getMasterSubdivision());
 
         // Tap tempo on center circle (use event delegation on SVG)
         const wheelSvg = document.getElementById('wheel');
@@ -83,6 +95,49 @@ const Game = (function() {
         console.log('Rhythm Wheel initialized - continuous mode');
     }
 
+    function populateGenreSelector() {
+        if (!genreSelectEl) return;
+
+        const genres = Puzzles.getGenres();
+        genreSelectEl.innerHTML = '';
+
+        genres.forEach(genre => {
+            const option = document.createElement('option');
+            option.value = genre.id;
+            option.textContent = genre.name;
+            genreSelectEl.appendChild(option);
+        });
+    }
+
+    function handleGenreChange(event) {
+        const genreId = event.target.value;
+        changeGenre(genreId);
+    }
+
+    function changeGenre(genreId) {
+        // Stop current playback
+        const wasRunning = Timing.isRunning();
+        if (wasRunning) {
+            Timing.stop();
+        }
+
+        // Switch genre
+        Puzzles.setGenre(genreId);
+
+        // Update timing for new genre
+        Timing.setTempo(Puzzles.getDefaultTempo());
+        Timing.setSubdivisions(Puzzles.getMasterSubdivision());
+
+        // Reset to first puzzle of new genre
+        currentPuzzleIndex = 0;
+        loadPuzzle(0);
+
+        // Restart if was running
+        if (wasRunning && started && !paused) {
+            Timing.start(0.1);
+        }
+    }
+
     function startOnFirstKey(event) {
         if (started) return;
 
@@ -112,8 +167,13 @@ const Game = (function() {
             showCompletion();
         }
 
-        // Render wheel symbols
-        Wheel.renderSymbols(currentPuzzle.symbols);
+        // Update subdivisions for this puzzle (use master subdivision for timing)
+        const masterSubdivision = currentPuzzle.masterSubdivision || Puzzles.getMasterSubdivision();
+        const instrumentSubdivisions = currentPuzzle.instrumentSubdivisions || Puzzles.getInstrumentSubdivisions();
+        Timing.setSubdivisions(masterSubdivision);
+
+        // Render wheel symbols with per-instrument subdivisions
+        Wheel.renderSymbols(currentPuzzle.symbols, instrumentSubdivisions, masterSubdivision);
         Wheel.clearSymbolStates();
 
         // Update UI
@@ -421,6 +481,7 @@ const Game = (function() {
 
     return {
         init,
+        changeGenre,
         getCurrentPuzzle: () => currentPuzzle
     };
 })();
