@@ -86,6 +86,13 @@ body {
     stroke-dasharray: 5, 5;
 }
 
+.instrument-circle {
+    fill: none;
+    stroke-width: 1;
+    stroke-dasharray: 4, 8;
+    opacity: 0.3;
+}
+
 .center-light {
     fill: #2c3e50;
     stroke: #e74c3c;
@@ -150,7 +157,7 @@ body {
 
 .symbol-label {
     fill: #fff;
-    font-size: 14px;
+    font-size: 11px;
     font-weight: bold;
     pointer-events: none;
 }

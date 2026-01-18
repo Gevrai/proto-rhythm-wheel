@@ -15,7 +15,7 @@ const Wheel = (function() {
     const CENTER_Y = 200;
     const WHEEL_RADIUS = 150;
     const MARKER_RADIUS = 8;
-    const SYMBOL_SIZE = 30;
+    const SYMBOL_SIZE = 22;
 
     // Colors for each instrument
     const COLORS = {
@@ -23,6 +23,14 @@ const Wheel = (function() {
         snare: '#3498db',   // Blue
         hihat: '#2ecc71',   // Green
         other: '#9b59b6'    // Purple
+    };
+
+    // Instrument circle radii (innermost to outermost)
+    const INSTRUMENT_RADII = {
+        kick: 55,
+        snare: 80,
+        hihat: 105,
+        other: 130
     };
 
     function init() {
@@ -44,9 +52,14 @@ const Wheel = (function() {
         const outerRing = createCircle(CENTER_X, CENTER_Y, WHEEL_RADIUS, 'wheel-ring');
         svgElement.appendChild(outerRing);
 
-        // Draw inner ring
-        const innerRing = createCircle(CENTER_X, CENTER_Y, WHEEL_RADIUS - 25, 'wheel-inner-ring');
-        svgElement.appendChild(innerRing);
+        // Draw instrument circles (faint colored rings for each instrument lane)
+        const instrumentOrder = ['other', 'hihat', 'snare', 'kick']; // Draw outer to inner
+        instrumentOrder.forEach(instrument => {
+            const circle = createCircle(CENTER_X, CENTER_Y, INSTRUMENT_RADII[instrument], 'instrument-circle');
+            circle.setAttribute('stroke', COLORS[instrument]);
+            circle.classList.add(`instrument-circle-${instrument}`);
+            svgElement.appendChild(circle);
+        });
 
         // Draw center light
         centerLight = createCircle(CENTER_X, CENTER_Y, 25, 'center-light');
@@ -122,41 +135,20 @@ const Wheel = (function() {
         symbolElements.forEach(el => el.remove());
         symbolElements = [];
 
-        // Group symbols by position
-        const symbolsByPosition = {};
+        // Place each symbol on its instrument's designated circle
         symbols.forEach(symbol => {
-            if (!symbolsByPosition[symbol.position]) {
-                symbolsByPosition[symbol.position] = [];
-            }
-            symbolsByPosition[symbol.position].push(symbol);
-        });
+            const angle = getAngleForPosition(symbol.position);
+            const radius = INSTRUMENT_RADII[symbol.instrument] || INSTRUMENT_RADII.other;
+            const pos = {
+                x: CENTER_X + Math.cos(angle) * radius,
+                y: CENTER_Y + Math.sin(angle) * radius
+            };
 
-        // Render each group with offsets to avoid overlap
-        Object.keys(symbolsByPosition).forEach(position => {
-            const group = symbolsByPosition[position];
-            const angle = getAngleForPosition(parseInt(position));
-
-            // Calculate radial direction (from center toward beat marker)
-            const radialX = Math.cos(angle);
-            const radialY = Math.sin(angle);
-
-            // Space symbols along the radial line, first symbol at outer edge
-            const spacing = SYMBOL_SIZE * 1.1;
-            const outerRadius = WHEEL_RADIUS - 35;
-
-            group.forEach((symbol, index) => {
-                const radius = outerRadius - index * spacing;
-                const pos = {
-                    x: CENTER_X + radialX * radius,
-                    y: CENTER_Y + radialY * radius
-                };
-
-                const element = createSymbol(symbol, pos);
-                element.setAttribute('data-position', symbol.position);
-                element.setAttribute('data-key', symbol.key);
-                symbolElements.push(element);
-                svgElement.appendChild(element);
-            });
+            const element = createSymbol(symbol, pos);
+            element.setAttribute('data-position', symbol.position);
+            element.setAttribute('data-key', symbol.key);
+            symbolElements.push(element);
+            svgElement.appendChild(element);
         });
     }
 
@@ -166,51 +158,13 @@ const Wheel = (function() {
         group.setAttribute('transform', `translate(${pos.x}, ${pos.y})`);
 
         const color = COLORS[symbol.instrument] || '#999';
-        let shape;
 
-        switch (symbol.instrument) {
-            case 'kick':
-                // Circle for kick
-                shape = document.createElementNS(SVG_NS, 'circle');
-                shape.setAttribute('cx', 0);
-                shape.setAttribute('cy', 0);
-                shape.setAttribute('r', SYMBOL_SIZE / 2);
-                shape.setAttribute('fill', color);
-                break;
-
-            case 'snare':
-                // Square for snare
-                shape = document.createElementNS(SVG_NS, 'rect');
-                shape.setAttribute('x', -SYMBOL_SIZE / 2);
-                shape.setAttribute('y', -SYMBOL_SIZE / 2);
-                shape.setAttribute('width', SYMBOL_SIZE);
-                shape.setAttribute('height', SYMBOL_SIZE);
-                shape.setAttribute('fill', color);
-                break;
-
-            case 'hihat':
-                // Triangle for hi-hat
-                const halfSize = SYMBOL_SIZE / 2;
-                shape = document.createElementNS(SVG_NS, 'polygon');
-                shape.setAttribute('points', `0,${-halfSize} ${halfSize},${halfSize} ${-halfSize},${halfSize}`);
-                shape.setAttribute('fill', color);
-                break;
-
-            case 'other':
-                // Diamond for other
-                const half = SYMBOL_SIZE / 2;
-                shape = document.createElementNS(SVG_NS, 'polygon');
-                shape.setAttribute('points', `0,${-half} ${half},0 0,${half} ${-half},0`);
-                shape.setAttribute('fill', color);
-                break;
-
-            default:
-                shape = document.createElementNS(SVG_NS, 'circle');
-                shape.setAttribute('cx', 0);
-                shape.setAttribute('cy', 0);
-                shape.setAttribute('r', SYMBOL_SIZE / 2);
-                shape.setAttribute('fill', '#999');
-        }
+        // All instruments use circles - color and letter differentiate them
+        const shape = document.createElementNS(SVG_NS, 'circle');
+        shape.setAttribute('cx', 0);
+        shape.setAttribute('cy', 0);
+        shape.setAttribute('r', SYMBOL_SIZE / 2);
+        shape.setAttribute('fill', color);
 
         shape.setAttribute('class', 'symbol-shape');
 
