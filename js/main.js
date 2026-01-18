@@ -21,6 +21,7 @@ const Game = (function() {
     let animationFrameId = null;
 
     let started = false;
+    let paused = false;
     let previewActive = false;
     let lastTapTime = 0;
     const DEFAULT_TEMPO = 80;
@@ -296,13 +297,60 @@ const Game = (function() {
 
     function handleLevelNav(event) {
         const key = event.key.toLowerCase();
+
+        // When paused, any instrument key or space restarts
+        if (paused) {
+            const validKeys = ['q', 'w', 'e', 'r'];
+            if (validKeys.includes(key)) {
+                Synth.playByKey(key);
+                restartCurrentLevel();
+                return;
+            } else if (event.code === 'Space') {
+                event.preventDefault();
+                restartCurrentLevel();
+                return;
+            }
+        }
+
         if (key === 'j') {
             goToPreviousPuzzle();
         } else if (key === 'k') {
             goToNextPuzzle();
         } else if (key === 'p') {
             previewBeat();
+        } else if (event.code === 'Space') {
+            event.preventDefault();
+            togglePause();
         }
+    }
+
+    function togglePause() {
+        if (!started) return;
+
+        if (paused) {
+            // Restart current level
+            restartCurrentLevel();
+        } else {
+            // Pause the game
+            pauseGame();
+        }
+    }
+
+    function pauseGame() {
+        paused = true;
+        Timing.stop();
+        Input.disable();
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+        }
+        statusMessageEl.textContent = 'PAUSED - Press Space to restart';
+    }
+
+    function restartCurrentLevel() {
+        paused = false;
+        loadPuzzle(currentPuzzleIndex);
+        startPlaying();
     }
 
     function goToNextPuzzle() {
