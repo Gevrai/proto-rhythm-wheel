@@ -7,6 +7,7 @@ const Wheel = (function() {
     const SVG_NS = 'http://www.w3.org/2000/svg';
     let svgElement = null;
     let centerLight = null;
+    let centerText = null;
     let positionMarkers = [];
     let symbolElements = [];
 
@@ -50,6 +51,16 @@ const Wheel = (function() {
         // Draw center light
         centerLight = createCircle(CENTER_X, CENTER_Y, 25, 'center-light');
         svgElement.appendChild(centerLight);
+
+        // Draw center BPM text
+        centerText = document.createElementNS(SVG_NS, 'text');
+        centerText.setAttribute('x', CENTER_X);
+        centerText.setAttribute('y', CENTER_Y);
+        centerText.setAttribute('dy', '0.35em');
+        centerText.setAttribute('class', 'center-text');
+        centerText.setAttribute('text-anchor', 'middle');
+        centerText.textContent = '80';
+        svgElement.appendChild(centerText);
 
         // Draw 8 position markers around the wheel
         for (let i = 0; i < 8; i++) {
@@ -243,6 +254,12 @@ const Wheel = (function() {
         return getAngleForPosition(subdivision);
     }
 
+    function setCenterText(text) {
+        if (centerText) {
+            centerText.textContent = text;
+        }
+    }
+
     return {
         init,
         render,
@@ -252,6 +269,7 @@ const Wheel = (function() {
         highlightSymbol,
         markSymbolComplete,
         clearSymbolStates,
+        setCenterText,
         getAngleForPosition,
         COLORS
     };

@@ -91,11 +91,19 @@ body {
     stroke: #e74c3c;
     stroke-width: 3;
     transition: fill 0.1s ease;
+    cursor: pointer;
 }
 
 .center-light.pulse {
     fill: #e74c3c;
     filter: drop-shadow(0 0 15px #e74c3c);
+}
+
+.center-text {
+    fill: #fff;
+    font-size: 14px;
+    font-weight: bold;
+    pointer-events: none;
 }
 
 .position-marker {

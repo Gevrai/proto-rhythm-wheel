@@ -15,12 +15,15 @@ const Game = (function() {
     let isFirstMeasure = true; // Skip checking the very first measure
 
     // DOM elements
-    let puzzleNameEl, puzzleTempoEl, statusMessageEl;
+    let puzzleNameEl, statusMessageEl;
 
     // Animation frame for visual sync
     let animationFrameId = null;
 
     let started = false;
+    let previewActive = false;
+    let lastTapTime = 0;
+    const DEFAULT_TEMPO = 80;
 
     function init() {
         // Initialize all modules
@@ -32,7 +35,6 @@ const Game = (function() {
 
         // Get DOM elements
         puzzleNameEl = document.getElementById('puzzle-name');
-        puzzleTempoEl = document.getElementById('puzzle-tempo');
         statusMessageEl = document.getElementById('status-message');
 
         // Set up timing callbacks
@@ -42,20 +44,48 @@ const Game = (function() {
         // Set up input callback
         Input.setOnKeyPress(handleKeyPress);
 
+        // Hidden level navigation (J = previous, K = next)
+        document.addEventListener('keydown', handleLevelNav);
+
+        // Set default tempo
+        Timing.setTempo(DEFAULT_TEMPO);
+        Timing.setSubdivisions(8);
+
+        // Tap tempo on center circle (use event delegation on SVG)
+        const wheelSvg = document.getElementById('wheel');
+        if (wheelSvg) {
+            wheelSvg.addEventListener('click', (event) => {
+                if (event.target.classList.contains('center-light')) {
+                    handleTapTempo(event);
+                }
+            });
+        }
+
         // Load first puzzle (visual only)
         loadPuzzle(0);
 
-        // Wait for user interaction to start (browser audio policy)
-        statusMessageEl.textContent = 'Click anywhere to start';
-        document.addEventListener('click', startOnClick, { once: true });
-        document.addEventListener('keydown', startOnClick, { once: true });
+        // Wait for instrument key to start (browser audio policy)
+        statusMessageEl.textContent = 'Press Q, W, E, or R to start';
+        document.addEventListener('keydown', startOnFirstKey);
 
         console.log('Rhythm Wheel initialized - continuous mode');
     }
 
-    function startOnClick() {
+    function startOnFirstKey(event) {
         if (started) return;
+
+        const key = event.key.toLowerCase();
+        const validKeys = ['q', 'w', 'e', 'r'];
+
+        if (!validKeys.includes(key)) return;
+
         started = true;
+        document.removeEventListener('keydown', startOnFirstKey);
+
+        // Play the instrument sound
+        Synth.playByKey(key);
+
+        // Start the game
         startPlaying();
     }
 
@@ -70,17 +100,13 @@ const Game = (function() {
             showCompletion();
         }
 
-        // Configure timing (don't stop, just update)
-        Timing.setTempo(currentPuzzle.tempo);
-        Timing.setSubdivisions(currentPuzzle.subdivisions);
-
         // Render wheel symbols
         Wheel.renderSymbols(currentPuzzle.symbols);
         Wheel.clearSymbolStates();
 
         // Update UI
         puzzleNameEl.textContent = `Puzzle ${currentPuzzle.id}: ${currentPuzzle.name}`;
-        puzzleTempoEl.textContent = `${currentPuzzle.tempo} BPM`;
+        updateTempoDisplay();
         statusMessageEl.textContent = currentPuzzle.description;
 
         // Reset tracking for new puzzle
@@ -118,6 +144,14 @@ const Game = (function() {
         setTimeout(() => {
             Wheel.highlightPosition(subdivision);
         }, Math.max(0, delay));
+
+        // If preview is active, play sounds for this subdivision
+        if (previewActive && currentPuzzle) {
+            const symbolsAtPosition = currentPuzzle.symbols.filter(s => s.position === subdivision);
+            symbolsAtPosition.forEach(symbol => {
+                Synth.playSound(symbol.instrument, time);
+            });
+        }
 
         // At subdivision 0 (beat 1), check previous measure and start new one
         if (subdivision === 0) {
@@ -247,6 +281,72 @@ const Game = (function() {
     function showCompletion() {
         puzzleNameEl.textContent = 'All Puzzles Complete!';
         statusMessageEl.textContent = 'Starting over...';
+    }
+
+    function handleLevelNav(event) {
+        const key = event.key.toLowerCase();
+        if (key === 'j') {
+            goToPreviousPuzzle();
+        } else if (key === 'k') {
+            goToNextPuzzle();
+        } else if (key === 'p') {
+            previewBeat();
+        }
+    }
+
+    function goToNextPuzzle() {
+        const nextIndex = currentPuzzleIndex + 1;
+        if (nextIndex < Puzzles.getCount()) {
+            loadPuzzle(nextIndex);
+        }
+    }
+
+    function goToPreviousPuzzle() {
+        const prevIndex = currentPuzzleIndex - 1;
+        if (prevIndex >= 0) {
+            loadPuzzle(prevIndex);
+        }
+    }
+
+    function previewBeat() {
+        if (!currentPuzzle) return;
+
+        if (previewActive) {
+            stopPreview();
+        } else {
+            previewActive = true;
+            statusMessageEl.textContent = 'Preview (P to stop)';
+        }
+    }
+
+    function stopPreview() {
+        previewActive = false;
+        if (currentPuzzle) {
+            statusMessageEl.textContent = currentPuzzle.description;
+        }
+    }
+
+    function handleTapTempo(event) {
+        event.stopPropagation(); // Don't trigger startOnClick
+
+        const now = performance.now();
+        const timeSinceLastTap = now - lastTapTime;
+
+        // If more than 2 seconds since last tap, start fresh
+        if (timeSinceLastTap < 2000 && lastTapTime > 0) {
+            // Calculate BPM from interval
+            const bpm = Math.round(60000 / timeSinceLastTap);
+            // Clamp to reasonable range
+            const clampedBpm = Math.max(40, Math.min(200, bpm));
+            Timing.setTempo(clampedBpm);
+            updateTempoDisplay();
+        }
+
+        lastTapTime = now;
+    }
+
+    function updateTempoDisplay() {
+        Wheel.setCenterText(Timing.getTempo());
     }
 
     // Initialize when DOM is ready
