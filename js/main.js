@@ -116,7 +116,7 @@ const Game = (function() {
         Wheel.clearSymbolStates();
 
         // Update UI
-        puzzleNameEl.textContent = `Puzzle ${currentPuzzle.id}: ${currentPuzzle.name}`;
+        puzzleNameEl.textContent = currentPuzzle.name;
         updateTempoDisplay();
         statusMessageEl.textContent = currentPuzzle.description;
 
