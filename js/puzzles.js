@@ -65,20 +65,20 @@ const Puzzles = (function() {
             tolerance: 180
         },
 
-        // 5: Add hi-hat on beats 2 and 4 too (hi-hat on all beats)
+        // 5: Add hi-hat on "and" of 2 and 4 (positions 3 and 7)
         {
             id: 5,
             name: "Full Hi-Hat",
-            description: "Add E on beats 2 and 4",
+            description: "Add E on 2.5 and 4.5",
             symbols: [
                 { position: 0, key: 'q', instrument: 'kick' },
-                { position: 0, key: 'e', instrument: 'hihat' },
+                { position: 1, key: 'e', instrument: 'hihat' },
                 { position: 2, key: 'w', instrument: 'snare' },
-                { position: 2, key: 'e', instrument: 'hihat' },
+                { position: 3, key: 'e', instrument: 'hihat' },
                 { position: 4, key: 'q', instrument: 'kick' },
-                { position: 4, key: 'e', instrument: 'hihat' },
+                { position: 5, key: 'e', instrument: 'hihat' },
                 { position: 6, key: 'w', instrument: 'snare' },
-                { position: 6, key: 'e', instrument: 'hihat' }
+                { position: 7, key: 'e', instrument: 'hihat' }
             ],
             tolerance: 160
         },
@@ -90,110 +90,75 @@ const Puzzles = (function() {
             description: "Add R on beat 1",
             symbols: [
                 { position: 0, key: 'q', instrument: 'kick' },
-                { position: 0, key: 'e', instrument: 'hihat' },
                 { position: 0, key: 'r', instrument: 'other' },
+                { position: 1, key: 'e', instrument: 'hihat' },
                 { position: 2, key: 'w', instrument: 'snare' },
-                { position: 2, key: 'e', instrument: 'hihat' },
+                { position: 3, key: 'e', instrument: 'hihat' },
                 { position: 4, key: 'q', instrument: 'kick' },
-                { position: 4, key: 'e', instrument: 'hihat' },
+                { position: 5, key: 'e', instrument: 'hihat' },
                 { position: 6, key: 'w', instrument: 'snare' },
-                { position: 6, key: 'e', instrument: 'hihat' }
+                { position: 7, key: 'e', instrument: 'hihat' }
             ],
             tolerance: 150
         },
 
-        // 7: Add eighth note hi-hats (between beats)
+        // 7: Add syncopated kick on "and" of 2
         {
             id: 7,
-            name: "Eighth Notes",
-            description: "Add E between beats",
+            name: "Syncopation",
+            description: "Add Q on the 'and' of 2",
             symbols: [
                 { position: 0, key: 'q', instrument: 'kick' },
-                { position: 0, key: 'e', instrument: 'hihat' },
                 { position: 0, key: 'r', instrument: 'other' },
                 { position: 1, key: 'e', instrument: 'hihat' },
                 { position: 2, key: 'w', instrument: 'snare' },
-                { position: 2, key: 'e', instrument: 'hihat' },
+                { position: 3, key: 'q', instrument: 'kick' },
                 { position: 3, key: 'e', instrument: 'hihat' },
                 { position: 4, key: 'q', instrument: 'kick' },
-                { position: 4, key: 'e', instrument: 'hihat' },
                 { position: 5, key: 'e', instrument: 'hihat' },
                 { position: 6, key: 'w', instrument: 'snare' },
-                { position: 6, key: 'e', instrument: 'hihat' },
                 { position: 7, key: 'e', instrument: 'hihat' }
             ],
             tolerance: 140
         },
 
-        // 8: Add syncopated kick on "and" of 2
+        // 8: Add bell on beat 3 too
         {
             id: 8,
-            name: "Syncopation",
-            description: "Add Q on the 'and' of 2",
+            name: "Double Bell",
+            description: "Add R on beat 3",
             symbols: [
                 { position: 0, key: 'q', instrument: 'kick' },
-                { position: 0, key: 'e', instrument: 'hihat' },
                 { position: 0, key: 'r', instrument: 'other' },
                 { position: 1, key: 'e', instrument: 'hihat' },
                 { position: 2, key: 'w', instrument: 'snare' },
-                { position: 2, key: 'e', instrument: 'hihat' },
                 { position: 3, key: 'q', instrument: 'kick' },
                 { position: 3, key: 'e', instrument: 'hihat' },
                 { position: 4, key: 'q', instrument: 'kick' },
-                { position: 4, key: 'e', instrument: 'hihat' },
+                { position: 4, key: 'r', instrument: 'other' },
                 { position: 5, key: 'e', instrument: 'hihat' },
                 { position: 6, key: 'w', instrument: 'snare' },
-                { position: 6, key: 'e', instrument: 'hihat' },
                 { position: 7, key: 'e', instrument: 'hihat' }
             ],
             tolerance: 130
         },
 
-        // 9: Add bell on beat 3 too
+        // 9: Same pattern, tighter tolerance
         {
             id: 9,
-            name: "Double Bell",
-            description: "Add R on beat 3",
-            symbols: [
-                { position: 0, key: 'q', instrument: 'kick' },
-                { position: 0, key: 'e', instrument: 'hihat' },
-                { position: 0, key: 'r', instrument: 'other' },
-                { position: 1, key: 'e', instrument: 'hihat' },
-                { position: 2, key: 'w', instrument: 'snare' },
-                { position: 2, key: 'e', instrument: 'hihat' },
-                { position: 3, key: 'q', instrument: 'kick' },
-                { position: 3, key: 'e', instrument: 'hihat' },
-                { position: 4, key: 'q', instrument: 'kick' },
-                { position: 4, key: 'e', instrument: 'hihat' },
-                { position: 4, key: 'r', instrument: 'other' },
-                { position: 5, key: 'e', instrument: 'hihat' },
-                { position: 6, key: 'w', instrument: 'snare' },
-                { position: 6, key: 'e', instrument: 'hihat' },
-                { position: 7, key: 'e', instrument: 'hihat' }
-            ],
-            tolerance: 120
-        },
-
-        // 10: Same pattern, tighter tolerance
-        {
-            id: 10,
             name: "Precision",
             description: "Tighter timing!",
             symbols: [
                 { position: 0, key: 'q', instrument: 'kick' },
-                { position: 0, key: 'e', instrument: 'hihat' },
                 { position: 0, key: 'r', instrument: 'other' },
                 { position: 1, key: 'e', instrument: 'hihat' },
                 { position: 2, key: 'w', instrument: 'snare' },
-                { position: 2, key: 'e', instrument: 'hihat' },
                 { position: 3, key: 'q', instrument: 'kick' },
                 { position: 3, key: 'e', instrument: 'hihat' },
                 { position: 4, key: 'q', instrument: 'kick' },
-                { position: 4, key: 'e', instrument: 'hihat' },
                 { position: 4, key: 'r', instrument: 'other' },
                 { position: 5, key: 'e', instrument: 'hihat' },
                 { position: 6, key: 'w', instrument: 'snare' },
-                { position: 6, key: 'e', instrument: 'hihat' },
                 { position: 7, key: 'e', instrument: 'hihat' }
             ],
             tolerance: 80
