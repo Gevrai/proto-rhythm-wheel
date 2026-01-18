@@ -8,7 +8,6 @@ const Game = (function() {
     let currentPuzzle = null;
 
     // Timing tracking
-    let measureStartTime = 0;
     let expectedHits = []; // Hits expected this measure
     let previousMeasureHits = []; // Store previous measure for completion check
     let consecutiveSuccessfulLoops = 0; // Track perfect loops in a row
